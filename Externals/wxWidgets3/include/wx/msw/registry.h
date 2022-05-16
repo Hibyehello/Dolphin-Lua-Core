@@ -52,9 +52,9 @@ public:
     HKCU,       // current user
     HKLM,       // local machine
     HKUSR,      // users
-    HKPD,       // performance data (WinNT/2K only)
+    HKPD,       // (obsolete under XP and later)
     HKCC,       // current config
-    HKDD,       // dynamic data (Win95/98 only)
+    HKDD,       // (obsolete under XP and later)
     HKMAX
   };
 
@@ -123,7 +123,7 @@ public:
     // hKey should be opened and will be closed in wxRegKey dtor
   void  SetHkey(WXHKEY hKey);
 
-  // get infomation about the key
+  // get information about the key
     // get the (full) key name. Abbreviate std root keys if bShortPrefix.
   wxString GetName(bool bShortPrefix = true) const;
     // Retrieves the registry view used by this key.
@@ -132,11 +132,11 @@ public:
   bool  Exists() const;
     // get the info about key (any number of these pointers may be NULL)
   bool  GetKeyInfo(size_t *pnSubKeys,      // number of subkeys
-                   size_t *pnMaxKeyLen,    // max len of subkey name
+                   size_t *pnMaxKeyLen,    // max length of subkey name
                    size_t *pnValues,       // number of values
                    size_t *pnMaxValueLen) const;
     // return true if the key is opened
-  bool  IsOpened() const { return m_hKey != 0; }
+  bool  IsOpened() const { return m_hKey != NULL; }
     // for "if ( !key ) wxLogError(...)" kind of expressions
   operator bool()  const { return m_dwLastError == 0; }
 
@@ -263,7 +263,7 @@ private:
   wxString      m_strKey;        // key name (relative to m_hRootKey)
   WOW64ViewMode m_viewMode;      // which view to select under WOW64
   AccessMode    m_mode;          // valid only if key is opened
-  long          m_dwLastError;   // last error (0 if none)
+  mutable long  m_dwLastError;   // last error (0 if none)
 
 
   wxDECLARE_NO_COPY_CLASS(wxRegKey);

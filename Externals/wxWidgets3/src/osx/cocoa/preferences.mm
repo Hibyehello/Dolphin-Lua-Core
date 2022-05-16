@@ -91,7 +91,7 @@ public:
         tool->SetClientData(info.get());
     }
 
-    virtual bool Show(bool show)
+    virtual bool Show(bool show) wxOVERRIDE
     {
         if ( show && !m_toolbarRealized )
         {
@@ -107,12 +107,12 @@ public:
         return wxFrame::Show(show);
     }
 
-    virtual bool ShouldPreventAppExit() const { return false; }
+    virtual bool ShouldPreventAppExit() const wxOVERRIDE { return false; }
 
 protected:
     // Native preferences windows resize when the selected panel changes and
     // the resizing is animated, so we need to override DoMoveWindow.
-    virtual void DoMoveWindow(int x, int y, int width, int height)
+    virtual void DoMoveWindow(int x, int y, int width, int height) wxOVERRIDE
     {
         NSRect r = wxToNSRect(NULL, wxRect(x, y, width, height));
         NSWindow *win = (NSWindow*)GetWXWindow();
@@ -150,6 +150,10 @@ private:
         //   3. new page is shown and the title updated.
         info->win->Show();
         SetTitle(info->page->GetName());
+
+        // Refresh the page to ensure everything is drawn in 10.14's dark mode;
+        // without it, generic controls aren't shown at all
+        info->win->Refresh();
 
         // TODO: Preferences window may have some pages resizeable and some
         //       non-resizable on OS X; the whole window is or is not resizable
@@ -207,12 +211,12 @@ public:
             m_win->Destroy();
     }
 
-    virtual void AddPage(wxPreferencesPage* page)
+    virtual void AddPage(wxPreferencesPage* page) wxOVERRIDE
     {
         GetWin()->AddPage(page);
     }
 
-    virtual void Show(wxWindow* WXUNUSED(parent))
+    virtual void Show(wxWindow* WXUNUSED(parent)) wxOVERRIDE
     {
         // OS X preferences windows don't have parents, they are independent
         // windows, so we just ignore the 'parent' argument.
@@ -221,7 +225,7 @@ public:
         win->Raise();
     }
 
-    virtual void Dismiss()
+    virtual void Dismiss() wxOVERRIDE
     {
         // Don't destroy the window, only hide it, because OS X preferences
         // window typically remember their state even when closed. Reopening

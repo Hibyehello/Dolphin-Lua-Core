@@ -31,20 +31,22 @@
 
 #include "wx/display.h"
 
+#include "wx/private/tlwgeom.h"
+
 // ----------------------------------------------------------------------------
 // event table
 // ----------------------------------------------------------------------------
 
-BEGIN_EVENT_TABLE(wxTopLevelWindowBase, wxWindow)
+wxBEGIN_EVENT_TABLE(wxTopLevelWindowBase, wxWindow)
     EVT_CLOSE(wxTopLevelWindowBase::OnCloseWindow)
     EVT_SIZE(wxTopLevelWindowBase::OnSize)
-END_EVENT_TABLE()
+wxEND_EVENT_TABLE()
 
 // ============================================================================
 // implementation
 // ============================================================================
 
-IMPLEMENT_ABSTRACT_CLASS(wxTopLevelWindow, wxWindow)
+wxIMPLEMENT_ABSTRACT_CLASS(wxTopLevelWindow, wxWindow);
 
 // ----------------------------------------------------------------------------
 // construction/destruction
@@ -101,6 +103,16 @@ wxTopLevelWindowBase::~wxTopLevelWindowBase()
 
 bool wxTopLevelWindowBase::Destroy()
 {
+    // We can't delay the destruction if our parent is being already destroyed
+    // as we will be deleted anyhow during its destruction and the pointer
+    // stored in wxPendingDelete would become invalid, so just delete ourselves
+    // immediately in this case.
+    wxWindow* parent = GetParent();
+    if ( (parent && parent->IsBeingDeleted()) || !GetHandle() )
+    {
+        return wxNonOwnedWindow::Destroy();
+    }
+
     // delayed destruction: the frame will be deleted during the next idle
     // loop iteration
     if ( !wxPendingDelete.Member(this) )
@@ -136,6 +148,14 @@ bool wxTopLevelWindowBase::IsLastBeforeExit() const
     // first of all, automatically exiting the app on last window close can be
     // completely disabled at wxTheApp level
     if ( !wxTheApp || !wxTheApp->GetExitOnFrameDelete() )
+        return false;
+
+    // second, never terminate the application after closing a child TLW
+    // because this would close its parent unexpectedly -- notice that this
+    // check is not redundant with the loop below, as the parent might return
+    // false from its ShouldPreventAppExit() -- except if the child is being
+    // deleted as part of the parent destruction
+    if ( GetParent() && !GetParent()->IsBeingDeleted() )
         return false;
 
     wxWindowList::const_iterator i;
@@ -229,8 +249,7 @@ void wxTopLevelWindowBase::DoCentre(int dir)
     // we need the display rect anyhow so store it first: notice that we should
     // be centered on the same display as our parent window, the display of
     // this window itself is not really defined yet
-    int nDisplay = wxDisplay::GetFromWindow(GetParent() ? GetParent() : this);
-    wxDisplay dpy(nDisplay == wxNOT_FOUND ? 0 : nDisplay);
+    wxDisplay dpy(GetParent() ? GetParent() : this);
     const wxRect rectDisplay(dpy.GetClientArea());
 
     // what should we centre this window on?
@@ -293,6 +312,28 @@ void wxTopLevelWindowBase::DoCentre(int dir)
 }
 
 // ----------------------------------------------------------------------------
+// Saving/restoring geometry
+// ----------------------------------------------------------------------------
+
+bool wxTopLevelWindowBase::SaveGeometry(const GeometrySerializer& ser) const
+{
+    wxTLWGeometry geom;
+    if ( !geom.GetFrom(static_cast<const wxTopLevelWindow*>(this)) )
+        return false;
+
+    return geom.Save(ser);
+}
+
+bool wxTopLevelWindowBase::RestoreToGeometry(GeometrySerializer& ser)
+{
+    wxTLWGeometry geom;
+    if ( !geom.Restore(ser) )
+        return false;
+
+    return geom.ApplyTo(static_cast<wxTopLevelWindow*>(this));
+}
+
+// ----------------------------------------------------------------------------
 // wxTopLevelWindow size management: we exclude the areas taken by
 // menu/status/toolbars from the client area, so the client area is what's
 // really available for the frame contents
@@ -325,11 +366,7 @@ void wxTopLevelWindowBase::DoClientToScreen(int *x, int *y) const
 
 bool wxTopLevelWindowBase::IsAlwaysMaximized() const
 {
-#if defined(__SMARTPHONE__) || defined(__POCKETPC__)
-    return true;
-#else
     return false;
-#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -356,22 +393,43 @@ void wxTopLevelWindowBase::SetIcon(const wxIcon& icon)
 // event handlers
 // ----------------------------------------------------------------------------
 
+bool wxTopLevelWindowBase::IsTopNavigationDomain(NavigationKind kind) const
+{
+    // This switch only exists to generate a compiler warning and force us to
+    // revisit this code if any new kinds of navigation are added in the
+    // future, but for now we block of them by default (some derived classes
+    // relax this however).
+    switch ( kind )
+    {
+        case Navigation_Tab:
+        case Navigation_Accel:
+            break;
+    }
+
+    return true;
+}
+
 // default resizing behaviour - if only ONE subwindow, resize to fill the
 // whole client area
-void wxTopLevelWindowBase::DoLayout()
+bool wxTopLevelWindowBase::Layout()
 {
     // We are called during the window destruction several times, e.g. as
     // wxFrame tries to adjust to its tool/status bars disappearing. But
     // actually doing the layout is pretty useless in this case as the window
     // will disappear anyhow -- so just don't bother.
     if ( IsBeingDeleted() )
-        return;
+        return false;
 
 
-    // if we're using constraints or sizers - do use them
-    if ( GetAutoLayout() )
+    // if we're using sizers or constraints - do use them
+    if ( GetAutoLayout()
+            || GetSizer()
+#if wxUSE_CONSTRAINTS
+                    || GetConstraints()
+#endif
+                                        )
     {
-        Layout();
+        return wxNonOwnedWindow::Layout();
     }
     else
     {
@@ -390,7 +448,7 @@ void wxTopLevelWindowBase::DoLayout()
             {
                 if ( child )
                 {
-                    return;     // it's our second subwindow - nothing to do
+                    return false; // it's our second subwindow - nothing to do
                 }
 
                 child = win;
@@ -405,8 +463,12 @@ void wxTopLevelWindowBase::DoLayout()
             DoGetClientSize(&clientW, &clientH);
 
             child->SetSize(0, 0, clientW, clientH);
+
+            return true;
         }
     }
+
+    return false;
 }
 
 // The default implementation for the close window event.

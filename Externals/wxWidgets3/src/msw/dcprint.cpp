@@ -46,10 +46,6 @@
 #include "wx/printdlg.h"
 #include "wx/msw/printdlg.h"
 
-#ifndef __WIN32__
-    #include <print.h>
-#endif
-
 // mingw32 defines GDI_ERROR incorrectly
 #if defined(__GNUWIN32__) || !defined(GDI_ERROR)
     #undef GDI_ERROR
@@ -66,7 +62,7 @@
 // wxWin macros
 // ----------------------------------------------------------------------------
 
-IMPLEMENT_ABSTRACT_CLASS(wxPrinterDCImpl, wxMSWDCImpl)
+wxIMPLEMENT_ABSTRACT_CLASS(wxPrinterDCImpl, wxMSWDCImpl);
 
 // ============================================================================
 // implementation
@@ -141,9 +137,8 @@ wxPrinterDC::wxPrinterDC(const wxString& driver_name,
 
 wxPrinterDCImpl::wxPrinterDCImpl( wxPrinterDC *owner, const wxPrintData& printData ) :
     wxMSWDCImpl( owner )
+    , m_printData(printData)
 {
-    m_printData = printData;
-
     m_isInteractive = false;
 
     m_hDC = wxGetPrinterDC(printData);
@@ -251,16 +246,8 @@ static bool wxGetDefaultDeviceName(wxString& deviceName, wxString& portName)
     LPTSTR      lpszPortName;
 
     PRINTDLG    pd;
-
-    // Cygwin has trouble believing PRINTDLG is 66 bytes - thinks it is 68
-#ifdef __GNUWIN32__
-    memset(&pd, 0, 66);
-    pd.lStructSize    = 66; // sizeof(PRINTDLG);
-#else
     memset(&pd, 0, sizeof(PRINTDLG));
     pd.lStructSize    = sizeof(PRINTDLG);
-#endif
-
     pd.hwndOwner      = (HWND)NULL;
     pd.hDevMode       = NULL; // Will be created by PrintDlg
     pd.hDevNames      = NULL; // Ditto

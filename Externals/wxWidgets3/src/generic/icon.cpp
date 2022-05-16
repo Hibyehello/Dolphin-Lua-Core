@@ -21,7 +21,7 @@
 // wxIcon
 //-----------------------------------------------------------------------------
 
-IMPLEMENT_DYNAMIC_CLASS(wxIcon, wxBitmap)
+wxIMPLEMENT_DYNAMIC_CLASS(wxIcon, wxBitmap);
 
 wxIcon::wxIcon(const char* const* bits) :
     wxBitmap( bits )
@@ -41,6 +41,6 @@ wxIcon::wxIcon() :  wxBitmap()
 
 void wxIcon::CopyFromBitmap(const wxBitmap& bmp)
 {
-    wxIcon *icon = (wxIcon*)(&bmp);
+    const wxIcon* icon = static_cast<const wxIcon*>(&bmp);
     *this = *icon;
 }

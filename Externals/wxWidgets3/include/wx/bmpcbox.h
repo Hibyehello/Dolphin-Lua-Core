@@ -17,6 +17,7 @@
 #if wxUSE_BITMAPCOMBOBOX
 
 #include "wx/bitmap.h"
+#include "wx/dynarray.h"
 
 class WXDLLIMPEXP_FWD_CORE wxWindow;
 class WXDLLIMPEXP_FWD_CORE wxItemContainer;
@@ -30,10 +31,10 @@ class WXDLLIMPEXP_FWD_CORE wxItemContainer;
 class WXDLLIMPEXP_FWD_CORE wxDC;
 #endif
 
-extern WXDLLIMPEXP_DATA_ADV(const char) wxBitmapComboBoxNameStr[];
+extern WXDLLIMPEXP_DATA_CORE(const char) wxBitmapComboBoxNameStr[];
 
 
-class WXDLLIMPEXP_ADV wxBitmapComboBoxBase
+class WXDLLIMPEXP_CORE wxBitmapComboBoxBase
 {
 public:
     // ctors and such

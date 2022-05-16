@@ -43,8 +43,8 @@ extern WXDLLEXPORT_DATA(const char) wxToolBarNameStr[] = "toolbar";
 // wxWidgets macros
 // ----------------------------------------------------------------------------
 
-BEGIN_EVENT_TABLE(wxToolBarBase, wxControl)
-END_EVENT_TABLE()
+wxBEGIN_EVENT_TABLE(wxToolBarBase, wxControl)
+wxEND_EVENT_TABLE()
 
 #include "wx/listimpl.cpp"
 
@@ -58,7 +58,7 @@ WX_DEFINE_LIST(wxToolBarToolsList)
 // wxToolBarToolBase
 // ----------------------------------------------------------------------------
 
-IMPLEMENT_DYNAMIC_CLASS(wxToolBarToolBase, wxObject)
+wxIMPLEMENT_DYNAMIC_CLASS(wxToolBarToolBase, wxObject);
 
 wxToolBarToolBase::~wxToolBarToolBase()
 {
@@ -437,6 +437,12 @@ void wxToolBarBase::ClearTools()
 
 void wxToolBarBase::AdjustToolBitmapSize()
 {
+    if ( HasFlag(wxTB_NOICONS) )
+    {
+        SetToolBitmapSize(wxSize(0, 0));
+        return;
+    }
+
     const wxSize sizeOrig(m_defaultWidth, m_defaultHeight);
 
     wxSize sizeActual(sizeOrig);
@@ -447,7 +453,7 @@ void wxToolBarBase::AdjustToolBitmapSize()
     {
         const wxBitmap& bmp = (*i)->GetNormalBitmap();
         if ( bmp.IsOk() )
-            sizeActual.IncTo(bmp.GetSize());
+            sizeActual.IncTo(bmp.GetScaledSize());
     }
 
     if ( sizeActual != sizeOrig )
@@ -622,6 +628,24 @@ bool wxToolBarBase::IsVertical() const
     return HasFlag(wxTB_LEFT | wxTB_RIGHT);
 }
 
+// wxTB_HORIZONTAL is same as wxTB_TOP and wxTB_VERTICAL is same as wxTB_LEFT,
+// so a toolbar created with wxTB_HORIZONTAL | wxTB_BOTTOM style can have set both
+// wxTB_TOP and wxTB_BOTTOM, similarly wxTB_VERTICAL | wxTB_RIGHT == wxTB_LEFT | wxTB_RIGHT.
+// GetDirection() makes things less confusing and returns just one of wxTB_TOP, wxTB_BOTTOM,
+// wxTB_LEFT, wxTB_RIGHT indicating where the toolbar is placed in the associated frame.
+int wxToolBarBase::GetDirection() const
+{
+    if ( HasFlag(wxTB_BOTTOM) )
+        return wxTB_BOTTOM;
+
+    if ( HasFlag(wxTB_RIGHT) )
+        return wxTB_RIGHT;
+
+    if ( HasFlag(wxTB_LEFT) )
+        return wxTB_LEFT;
+
+    return wxTB_TOP;
+}
 
 // ----------------------------------------------------------------------------
 // event processing
@@ -668,7 +692,7 @@ void wxToolBarBase::OnMouseEnter(int toolid)
     event.SetEventObject(this);
     event.SetInt(toolid);
 
-    wxFrame *frame = wxDynamicCast(GetParent(), wxFrame);
+    wxFrame *frame = wxDynamicCast(wxGetTopLevelParent(this), wxFrame);
     if ( frame )
     {
         wxString help;
